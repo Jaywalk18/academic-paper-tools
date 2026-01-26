@@ -1,0 +1,193 @@
+# Cursor Agent Skills for Academic Paper Review
+
+This repository contains two Cursor Agent Skills for academic paper review workflows:
+
+1. **paper-review** - AI-powered paper review simulation using multi-agent system
+2. **ref-check** - BibTeX reference verification against academic databases
+
+## Features
+
+### Paper Review Skill
+
+- **Multi-Agent Pipeline**: Uses 4 AI agents to simulate the academic review process
+- **Visual Analysis**: Analyzes PDF pages to extract technical contributions
+- **Review Synthesis**: Evaluates reviewer comments and identifies credibility
+- **Rebuttal Analysis**: Assesses author responses to reviewer concerns
+- **Decision Prediction**: Predicts acceptance (Oral/Spotlight/Poster/Reject)
+
+### RefCheck Skill
+
+- **Multi-Source Verification**: Checks references against Crossref, OpenAlex, and Semantic Scholar
+- **Accuracy Scoring**: Computes title similarity, author match, and year match
+- **Status Classification**: Classifies each reference as verified/uncertain/suspicious
+- **Detailed Reports**: Provides diff details and suggested corrections
+
+## Installation
+
+### 1. Copy Skills to Cursor
+
+Copy the skill directories to your Cursor skills folder:
+
+**Windows:**
+```powershell
+Copy-Item -Recurse .\paper-review\ "$env:USERPROFILE\.cursor\skills\paper-review"
+Copy-Item -Recurse .\ref-check\ "$env:USERPROFILE\.cursor\skills\ref-check"
+```
+
+**macOS/Linux:**
+```bash
+cp -r ./paper-review ~/.cursor/skills/
+cp -r ./ref-check ~/.cursor/skills/
+```
+
+### 2. Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Configure API Keys
+
+**For Paper Review** (required):
+```bash
+# Windows PowerShell
+$env:PAPER_REVIEW_API_KEY = "your-openai-api-key"
+
+# macOS/Linux
+export PAPER_REVIEW_API_KEY="your-openai-api-key"
+```
+
+**For RefCheck** (optional, enhances search):
+```bash
+# Windows PowerShell
+$env:SEMANTIC_SCHOLAR_API_KEY = "your-s2-api-key"
+
+# macOS/Linux
+export SEMANTIC_SCHOLAR_API_KEY="your-s2-api-key"
+```
+
+## Usage
+
+Once installed, the skills will be automatically triggered when you ask Cursor Agent to:
+
+### Paper Review
+- "Review this paper: paper.pdf"
+- "What are the chances this paper gets accepted?"
+- "Evaluate this ICLR submission"
+- "Predict the acceptance decision for this paper"
+
+### RefCheck
+- "Check the references in paper.bib"
+- "Verify this citation"
+- "Are there any suspicious references?"
+- "Validate the bibliography"
+
+## Command Line Usage
+
+You can also use the scripts directly:
+
+### Paper Review
+
+```bash
+# Basic review (PDF only)
+python paper-review/scripts/review_paper.py --pdf paper.pdf
+
+# With reviewer comments
+python paper-review/scripts/review_paper.py --pdf paper.pdf --reviews reviews.json
+
+# Save output
+python paper-review/scripts/review_paper.py --pdf paper.pdf -o result.json
+```
+
+### RefCheck
+
+```bash
+# Check a .bib file
+python ref-check/scripts/check_references.py --bib references.bib
+
+# Check inline BibTeX
+python ref-check/scripts/check_references.py --content "@article{key, title={...}}"
+
+# Save report
+python ref-check/scripts/check_references.py --bib refs.bib -o report.json
+```
+
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `PAPER_REVIEW_API_KEY` | Yes (paper-review) | OpenAI-compatible API key |
+| `PAPER_REVIEW_API_BASE` | No | Custom API base URL (default: OpenAI) |
+| `PAPER_REVIEW_MODEL` | No | Model name (default: gpt-4o) |
+| `SEMANTIC_SCHOLAR_API_KEY` | No | Semantic Scholar API key for enhanced search |
+
+## Output Examples
+
+### Paper Review Output
+
+```json
+{
+  "title": "Deep Learning for NLP",
+  "prediction": "Poster",
+  "final_score": 7.5,
+  "decision": {
+    "final_decision": "Poster",
+    "decision_archetype": "Uncontested_Success",
+    "key_factor": "Strong empirical results",
+    "confidence": "High"
+  }
+}
+```
+
+### RefCheck Output
+
+```json
+{
+  "summary": {
+    "total": 10,
+    "counts": {
+      "verified": 7,
+      "uncertain": 2,
+      "suspicious": 1
+    }
+  },
+  "items": [
+    {
+      "key": "smith2023",
+      "status": "verified",
+      "score": 90,
+      "best_match": {
+        "title": "...",
+        "sim_title": 0.95
+      }
+    }
+  ]
+}
+```
+
+## System Requirements
+
+- Python 3.8+
+- Cursor IDE with Agent mode enabled
+- Internet connection for API calls
+
+### Additional Requirements for Paper Review
+
+- Poppler (for PDF processing)
+  - **Windows**: Download from [poppler-for-windows](https://github.com/osber/poppler-for-windows/releases)
+  - **macOS**: `brew install poppler`
+  - **Linux**: `apt-get install poppler-utils`
+
+## License
+
+MIT License
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Acknowledgments
+
+- [Crossref](https://www.crossref.org/) - Scholarly metadata API
+- [OpenAlex](https://openalex.org/) - Open catalog of scholarly works
+- [Semantic Scholar](https://www.semanticscholar.org/) - AI-powered research tool
