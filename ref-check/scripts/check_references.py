@@ -8,6 +8,7 @@ Crossref, OpenAlex, and optionally Semantic Scholar.
 Usage:
     python check_references.py --bib references.bib
     python check_references.py --bib refs.bib --output report.json
+    python check_references.py --bib refs.bib --format markdown -o report.md
 
 Environment Variables:
     SEMANTIC_SCHOLAR_API_KEY - Optional, for enhanced S2 search
@@ -20,6 +21,7 @@ import re
 import sys
 import time
 import unicodedata
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Optional, Tuple
 
 try:
@@ -33,6 +35,14 @@ try:
 except ImportError:
     print("Error: rapidfuzz not installed. Run: pip install rapidfuzz")
     sys.exit(1)
+
+# Optional: tqdm for progress bar
+try:
+    from tqdm import tqdm
+    HAS_TQDM = True
+except ImportError:
+    HAS_TQDM = False
+    tqdm = None
 
 
 # =============================================================================
@@ -588,8 +598,38 @@ def score_entry(entry: Dict[str, Any], evidence: Dict[str, Any]) -> Dict[str, An
 # MAIN PIPELINE
 # =============================================================================
 
-def verify_references(bib_content: str, verbose: bool = True) -> Dict[str, Any]:
-    """Verify all references in BibTeX content."""
+def _search_all_databases(title: str, author: str, year: Optional[int]) -> Dict[str, Any]:
+    """Search all databases in parallel for a single entry."""
+    evidence = {}
+    
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        futures = {
+            executor.submit(search_crossref, title, author, year): "crossref",
+            executor.submit(search_openalex, title): "openalex",
+            executor.submit(search_semantic_scholar, title): "semanticscholar",
+        }
+        
+        for future in as_completed(futures):
+            source = futures[future]
+            try:
+                evidence[source] = future.result()
+            except Exception as e:
+                evidence[source] = {"ok": False, "error": str(e), "data": None}
+    
+    return evidence
+
+
+def verify_references(bib_content: str, verbose: bool = True, parallel: bool = True) -> Dict[str, Any]:
+    """Verify all references in BibTeX content.
+    
+    Args:
+        bib_content: BibTeX file content as string
+        verbose: Print progress information
+        parallel: Use parallel API requests (faster but may hit rate limits)
+    
+    Returns:
+        Dictionary with summary and per-item verification results
+    """
     if verbose:
         print("[1/3] Parsing BibTeX...")
     entries = parse_bibtex(bib_content)
@@ -604,21 +644,30 @@ def verify_references(bib_content: str, verbose: bool = True) -> Dict[str, Any]:
         print("[3/3] Verifying against databases...")
     results = []
 
-    for idx, entry in enumerate(norm_entries, start=1):
+    # Use tqdm if available and verbose
+    if verbose and HAS_TQDM:
+        iterator = tqdm(norm_entries, desc="Verifying", unit="ref")
+    else:
+        iterator = norm_entries
+
+    for idx, entry in enumerate(iterator, start=1):
         key = safe_str(entry.get("id"))
         title = safe_str(entry.get("title") or entry.get("title_norm") or "")
         author = safe_str(entry.get("first_author_norm") or "")
         year = entry.get("year_int")
 
-        if verbose:
+        if verbose and not HAS_TQDM:
             print(f"      [{idx}/{len(norm_entries)}] {key[:40]}...")
 
-        # Search all databases
-        evidence = {
-            "crossref": search_crossref(title, author, year),
-            "openalex": search_openalex(title),
-            "semanticscholar": search_semantic_scholar(title),
-        }
+        # Search all databases (parallel or sequential)
+        if parallel:
+            evidence = _search_all_databases(title, author, year)
+        else:
+            evidence = {
+                "crossref": search_crossref(title, author, year),
+                "openalex": search_openalex(title),
+                "semanticscholar": search_semantic_scholar(title),
+            }
 
         scored = score_entry(entry, evidence)
         results.append(scored)
@@ -633,6 +682,85 @@ def verify_references(bib_content: str, verbose: bool = True) -> Dict[str, Any]:
     }
 
 
+def format_markdown_report(result: Dict[str, Any]) -> str:
+    """Generate Markdown report from verification results."""
+    lines = []
+    summary = result["summary"]
+    items = result["items"]
+    
+    # Header
+    lines.append("# Reference Verification Report\n")
+    lines.append(f"Generated: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+    
+    # Summary
+    lines.append("## Summary\n")
+    lines.append(f"- **Total references**: {summary['total']}")
+    
+    counts = summary.get("counts", {})
+    verified = counts.get("verified", 0)
+    uncertain = counts.get("uncertain", 0)
+    suspicious = counts.get("suspicious", 0)
+    
+    if summary["total"] > 0:
+        lines.append(f"- ✅ **Verified**: {verified} ({verified*100//summary['total']}%)")
+        lines.append(f"- ⚠️ **Uncertain**: {uncertain} ({uncertain*100//summary['total']}%)")
+        lines.append(f"- ❌ **Suspicious**: {suspicious} ({suspicious*100//summary['total']}%)")
+    lines.append("")
+    
+    # Suspicious references
+    suspicious_items = [i for i in items if i["status"] == "suspicious"]
+    if suspicious_items:
+        lines.append("## ❌ Suspicious References (Need Attention)\n")
+        for idx, item in enumerate(suspicious_items, 1):
+            lines.append(f"### {idx}. `{item['key']}`\n")
+            lines.append(f"- **BibTeX title**: {item['input']['title'][:80]}...")
+            if item.get("best_match"):
+                match = item["best_match"]
+                lines.append(f"- **Best match** (sim={match['sim_title']:.2f}): {match['title'][:80]}...")
+            else:
+                lines.append("- **Issue**: No matching papers found in any database")
+            for flag in item.get("red_flags", []):
+                lines.append(f"- ⚠️ {flag}")
+            lines.append("")
+    
+    # Uncertain references
+    uncertain_items = [i for i in items if i["status"] == "uncertain"]
+    if uncertain_items:
+        lines.append("## ⚠️ Uncertain References (Review Recommended)\n")
+        for idx, item in enumerate(uncertain_items, 1):
+            lines.append(f"### {idx}. `{item['key']}`\n")
+            lines.append(f"- **BibTeX title**: {item['input']['title'][:80]}...")
+            if item.get("best_match"):
+                match = item["best_match"]
+                lines.append(f"- **Best match** (sim={match['sim_title']:.2f}): {match['title'][:80]}...")
+            for flag in item.get("red_flags", []):
+                lines.append(f"- ⚠️ {flag}")
+            lines.append("")
+    
+    # Verified references (collapsed)
+    verified_items = [i for i in items if i["status"] == "verified"]
+    if verified_items:
+        lines.append("## ✅ Verified References\n")
+        lines.append("<details>")
+        lines.append("<summary>Click to expand ({} references)</summary>\n".format(len(verified_items)))
+        for item in verified_items:
+            lines.append(f"- `{item['key']}`: {item['input']['title'][:60]}...")
+        lines.append("\n</details>\n")
+    
+    # Suggested corrections
+    items_with_suggestions = [i for i in items if i.get("suggested")]
+    if items_with_suggestions:
+        lines.append("## Suggested Corrections\n")
+        lines.append("```bibtex")
+        for item in items_with_suggestions:
+            lines.append(f"% {item['key']} - suggested corrections:")
+            for field, value in item["suggested"].items():
+                lines.append(f"%   {field} = {{{value}}}")
+        lines.append("```\n")
+    
+    return "\n".join(lines)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Verify BibTeX references against academic databases (RefCheck_ai algorithm)",
@@ -641,14 +769,20 @@ def main():
 Examples:
   python check_references.py --bib references.bib
   python check_references.py --bib refs.bib --output report.json
+  python check_references.py --bib refs.bib --format markdown -o report.md
+  python check_references.py --bib refs.bib --no-parallel  # Sequential mode
 
 Environment Variables:
   SEMANTIC_SCHOLAR_API_KEY - Optional, for enhanced S2 search
         """
     )
     parser.add_argument("--bib", required=True, help="Path to .bib file")
-    parser.add_argument("--output", "-o", help="Output JSON file path")
+    parser.add_argument("--output", "-o", help="Output file path")
+    parser.add_argument("--format", "-f", choices=["json", "markdown"], default="json",
+                        help="Output format (default: json)")
     parser.add_argument("--quiet", "-q", action="store_true", help="Suppress progress output")
+    parser.add_argument("--no-parallel", action="store_true", 
+                        help="Disable parallel API requests (slower but safer)")
 
     args = parser.parse_args()
 
@@ -659,37 +793,49 @@ Environment Variables:
     with open(args.bib, 'r', encoding='utf-8') as f:
         bib_content = f.read()
 
-    result = verify_references(bib_content, verbose=not args.quiet)
+    # Run verification
+    result = verify_references(
+        bib_content, 
+        verbose=not args.quiet,
+        parallel=not args.no_parallel
+    )
 
+    # Output results
     if args.output:
         with open(args.output, 'w', encoding='utf-8') as f:
-            json.dump(result, f, ensure_ascii=False, indent=2)
+            if args.format == "markdown":
+                f.write(format_markdown_report(result))
+            else:
+                json.dump(result, f, ensure_ascii=False, indent=2)
         print(f"\nResult saved to: {args.output}")
     else:
-        print("\n" + "=" * 60)
-        print("VERIFICATION RESULT")
-        print("=" * 60)
-        
-        # Print summary
-        summary = result["summary"]
-        print(f"\nTotal: {summary['total']}")
-        for status, count in summary["counts"].items():
-            icon = "✅" if status == "verified" else ("⚠️" if status == "uncertain" else "❌")
-            print(f"  {icon} {status}: {count}")
-        
-        # Print suspicious/uncertain items
-        print("\n" + "-" * 60)
-        for item in result["items"]:
-            if item["status"] != "verified":
-                print(f"\n[{item['status'].upper()}] {item['key']}")
-                print(f"  Title: {item['input']['title'][:60]}...")
-                if item["best_match"]:
-                    print(f"  Best match (sim={item['best_match']['sim_title']}):")
-                    print(f"    {item['best_match']['title'][:60]}...")
-                for flag in item.get("red_flags", []):
-                    print(f"  ⚠️ {flag}")
-        
-        print("\n" + "=" * 60)
+        if args.format == "markdown":
+            print(format_markdown_report(result))
+        else:
+            print("\n" + "=" * 60)
+            print("VERIFICATION RESULT")
+            print("=" * 60)
+            
+            # Print summary
+            summary = result["summary"]
+            print(f"\nTotal: {summary['total']}")
+            for status, count in summary["counts"].items():
+                icon = "✅" if status == "verified" else ("⚠️" if status == "uncertain" else "❌")
+                print(f"  {icon} {status}: {count}")
+            
+            # Print suspicious/uncertain items
+            print("\n" + "-" * 60)
+            for item in result["items"]:
+                if item["status"] != "verified":
+                    print(f"\n[{item['status'].upper()}] {item['key']}")
+                    print(f"  Title: {item['input']['title'][:60]}...")
+                    if item["best_match"]:
+                        print(f"  Best match (sim={item['best_match']['sim_title']}):")
+                        print(f"    {item['best_match']['title'][:60]}...")
+                    for flag in item.get("red_flags", []):
+                        print(f"  ⚠️ {flag}")
+            
+            print("\n" + "=" * 60)
 
 
 if __name__ == "__main__":

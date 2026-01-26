@@ -1,6 +1,11 @@
 ---
 name: ref-check
 description: Verify BibTeX references for academic papers. Checks citation accuracy against Crossref and OpenAlex databases using the RefCheck_ai algorithm. Use when the user wants to check references, verify citations, validate a .bib file, or find potential citation errors.
+version: 1.0.0
+author: Academic Paper Tools
+license: MIT
+tags: [Academic, BibTeX, Citations, Reference Check, LaTeX, Crossref, OpenAlex]
+dependencies: [requests, rapidfuzz, bibtexparser]
 ---
 
 # RefCheck - BibTeX Reference Verification

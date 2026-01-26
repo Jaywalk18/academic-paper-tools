@@ -2,6 +2,9 @@
 
 # Academic Paper Tools - Agent Skills
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+
 Agent-native tools for academic paper workflows. Works with any AI coding assistant that supports Agent mode (Cursor, Claude Code, Windsurf, Cline, etc.).
 
 ## Design Philosophy
@@ -47,6 +50,22 @@ Verifies BibTeX references against academic databases (Crossref, OpenAlex).
 "Check the references in main.bib"
 "Verify my citations"
 "Are there any suspicious references?"
+```
+
+**Example Output:**
+```
+✅ Verified: 38/45 (84%)
+⚠️ Uncertain: 5/45 (11%)
+❌ Suspicious: 2/45 (5%)
+
+[SUSPICIOUS] fabricated2023
+  Title: A Novel Approach to Everything...
+  Issue: No matching papers found in any database
+  
+[UNCERTAIN] smith2020deep
+  Title: Deep Learning Methods...
+  Best match (sim=0.72): Deep Learning Methods for Computer Vision...
+  ⚠️ Title inconsistent (sim=0.72)
 ```
 
 ## Installation
@@ -111,10 +130,18 @@ For LaTeX projects, reading source files is superior to PDF:
 cursor-skills/
 ├── paper-review/
 │   ├── SKILL.md          # Main skill definition
-│   └── prompts.md        # Reference prompts (optional)
+│   └── prompts.md        # Evaluation criteria & templates
 ├── ref-check/
 │   ├── SKILL.md          # Main skill definition
-│   └── reference.md      # API documentation (optional)
+│   ├── reference.md      # API documentation
+│   └── scripts/
+│       └── check_references.py  # Standalone verification script
+├── examples/
+│   ├── sample.bib        # Sample BibTeX for testing
+│   └── sample_report.md  # Example output report
+├── requirements.txt      # Python dependencies
+├── LICENSE               # MIT License
+├── CONTRIBUTING.md       # Contribution guidelines
 ├── README.md
 └── README_CN.md
 ```

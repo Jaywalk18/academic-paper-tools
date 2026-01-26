@@ -2,6 +2,9 @@
 
 # 学术论文工具 - Agent Skills
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+
 Agent 原生的学术论文工具，适用于任何支持 Agent 模式的 AI 编程助手（Cursor、Claude Code、Windsurf、Cline 等）。
 
 ## 设计理念
@@ -47,6 +50,22 @@ Agent 原生的学术论文工具，适用于任何支持 Agent 模式的 AI 编
 "检查 main.bib 里的引用"
 "验证一下我的参考文献"
 "有没有可疑的引用？"
+```
+
+**输出示例：**
+```
+✅ 已验证: 38/45 (84%)
+⚠️ 待确认: 5/45 (11%)
+❌ 可疑: 2/45 (5%)
+
+[可疑] fabricated2023
+  标题: A Novel Approach to Everything...
+  问题: 任何数据库都找不到匹配论文
+  
+[待确认] smith2020deep
+  标题: Deep Learning Methods...
+  最佳匹配 (相似度=0.72): Deep Learning Methods for Computer Vision...
+  ⚠️ 标题不一致 (sim=0.72)
 ```
 
 ## 安装
@@ -111,10 +130,18 @@ cp -r ./paper-review ~/.claude/skills/
 cursor-skills/
 ├── paper-review/
 │   ├── SKILL.md          # 主 Skill 定义
-│   └── prompts.md        # 参考 Prompts（可选）
+│   └── prompts.md        # 评估标准和模板
 ├── ref-check/
 │   ├── SKILL.md          # 主 Skill 定义
-│   └── reference.md      # API 文档（可选）
+│   ├── reference.md      # API 文档
+│   └── scripts/
+│       └── check_references.py  # 独立验证脚本
+├── examples/
+│   ├── sample.bib        # 测试用 BibTeX 示例
+│   └── sample_report.md  # 输出报告示例
+├── requirements.txt      # Python 依赖
+├── LICENSE               # MIT 许可证
+├── CONTRIBUTING.md       # 贡献指南
 ├── README.md
 └── README_CN.md
 ```

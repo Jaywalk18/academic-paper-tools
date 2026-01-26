@@ -1,6 +1,10 @@
 ---
 name: paper-review
 description: Review academic papers in LaTeX projects. Analyzes TeX source files, figures, and bibliography to provide comprehensive peer review feedback. Use when the user asks to review a paper, evaluate a submission, or wants feedback on their LaTeX manuscript.
+version: 1.0.0
+author: Academic Paper Tools
+license: MIT
+tags: [Academic, Paper Review, LaTeX, Peer Review, NeurIPS, ICML, ICLR, CVPR]
 ---
 
 # Paper Review - AI-Powered Academic Paper Evaluation
