@@ -1,6 +1,8 @@
-# Cursor Agent Skills for Academic Paper Review
+# Academic Paper Tools
 
-This repository contains two Cursor Agent Skills for academic paper review workflows:
+AI-powered tools for academic paper workflows. Works with Cursor, CLI, and other AI editors.
+
+This repository contains two tools:
 
 1. **paper-review** - AI-powered paper review simulation using multi-agent system
 2. **ref-check** - BibTeX reference verification against academic databases
@@ -24,20 +26,11 @@ This repository contains two Cursor Agent Skills for academic paper review workf
 
 ## Installation
 
-### 1. Copy Skills to Cursor
+### 1. Clone Repository
 
-Copy the skill directories to your Cursor skills folder:
-
-**Windows:**
-```powershell
-Copy-Item -Recurse .\paper-review\ "$env:USERPROFILE\.cursor\skills\paper-review"
-Copy-Item -Recurse .\ref-check\ "$env:USERPROFILE\.cursor\skills\ref-check"
-```
-
-**macOS/Linux:**
 ```bash
-cp -r ./paper-review ~/.cursor/skills/
-cp -r ./ref-check ~/.cursor/skills/
+git clone https://github.com/Jaywalk18/academic-paper-tools.git
+cd academic-paper-tools
 ```
 
 ### 2. Install Dependencies
@@ -68,23 +61,7 @@ export SEMANTIC_SCHOLAR_API_KEY="your-s2-api-key"
 
 ## Usage
 
-Once installed, the skills will be automatically triggered when you ask Cursor Agent to:
-
-### Paper Review
-- "Review this paper: paper.pdf"
-- "What are the chances this paper gets accepted?"
-- "Evaluate this ICLR submission"
-- "Predict the acceptance decision for this paper"
-
-### RefCheck
-- "Check the references in paper.bib"
-- "Verify this citation"
-- "Are there any suspicious references?"
-- "Validate the bibliography"
-
-## Command Line Usage
-
-You can also use the scripts directly:
+### Command Line
 
 ### Paper Review
 
@@ -168,7 +145,6 @@ python ref-check/scripts/check_references.py --bib refs.bib -o report.json
 ## System Requirements
 
 - Python 3.8+
-- Cursor IDE with Agent mode enabled
 - Internet connection for API calls
 
 ### Additional Requirements for Paper Review
@@ -177,6 +153,26 @@ python ref-check/scripts/check_references.py --bib refs.bib -o report.json
   - **Windows**: Download from [poppler-for-windows](https://github.com/osber/poppler-for-windows/releases)
   - **macOS**: `brew install poppler`
   - **Linux**: `apt-get install poppler-utils`
+
+## AI Editor Integration (Optional)
+
+These tools can be used as Agent Skills in AI-powered editors like Cursor:
+
+**Windows:**
+```powershell
+Copy-Item -Recurse .\paper-review\ "$env:USERPROFILE\.cursor\skills\paper-review"
+Copy-Item -Recurse .\ref-check\ "$env:USERPROFILE\.cursor\skills\ref-check"
+```
+
+**macOS/Linux:**
+```bash
+cp -r ./paper-review ~/.cursor/skills/
+cp -r ./ref-check ~/.cursor/skills/
+```
+
+Then you can use natural language commands like:
+- "Review this paper: paper.pdf"
+- "Check the references in paper.bib"
 
 ## License
 
