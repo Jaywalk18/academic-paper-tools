@@ -1,14 +1,14 @@
 [English](README.md) | [中文](README_CN.md)
 
-# Academic Paper Tools - Cursor Agent Skills
+# Academic Paper Tools - Agent Skills
 
-Agent-native tools for academic paper workflows. Designed specifically for Cursor AI to leverage its built-in capabilities.
+Agent-native tools for academic paper workflows. Works with any AI coding assistant that supports Agent mode (Cursor, Claude Code, Windsurf, Cline, etc.).
 
 ## Design Philosophy
 
 These skills are designed as **Agent-native** tools:
 
-- **No external LLM calls** - The Cursor Agent itself analyzes content directly
+- **No external LLM calls** - The AI Agent itself analyzes content directly
 - **Direct file access** - Reads TeX source, figures, and bibliography files natively
 - **Minimal dependencies** - Only calls external APIs when necessary (e.g., bibliographic databases)
 - **LaTeX-first** - Optimized for TeX projects, reading source files for better analysis
@@ -51,36 +51,40 @@ Verifies BibTeX references against academic databases (Crossref, OpenAlex).
 
 ## Installation
 
-### Option 1: Copy to Cursor Skills Directory
+### Option 1: Copy to Skills Directory
 
-**Windows:**
-```powershell
-Copy-Item -Recurse .\paper-review\ "$env:USERPROFILE\.cursor\skills\paper-review"
-Copy-Item -Recurse .\ref-check\ "$env:USERPROFILE\.cursor\skills\ref-check"
-```
-
-**macOS/Linux:**
+**Cursor:**
 ```bash
+# Windows
+Copy-Item -Recurse .\paper-review\ "$env:USERPROFILE\.cursor\skills\paper-review"
+# macOS/Linux
 cp -r ./paper-review ~/.cursor/skills/
-cp -r ./ref-check ~/.cursor/skills/
 ```
+
+**Claude Code:**
+```bash
+cp -r ./paper-review ~/.claude/skills/
+```
+
+**Other AI Assistants:**
+Follow your tool's documentation for adding custom skills/prompts.
 
 ### Option 2: Use Directly in Project
 
-Place the skill folders in your project's `.cursor/skills/` directory.
+Place the skill folders in your project directory. Most AI assistants will automatically pick up SKILL.md or similar files.
 
 ## Why Agent-Native?
 
 Traditional approaches call external LLM APIs from scripts:
 
 ```
-❌ Old: User → Cursor Agent → Python Script → OpenAI API → Response
+❌ Old: User → AI Agent → Python Script → OpenAI API → Response
 ```
 
-This is redundant - Cursor Agent already IS a powerful LLM!
+This is redundant - the AI Agent already IS a powerful LLM!
 
 ```
-✅ New: User → Cursor Agent (directly analyzes files) → Response
+✅ New: User → AI Agent (directly analyzes files) → Response
 ```
 
 **Benefits:**
@@ -117,7 +121,7 @@ cursor-skills/
 
 ## Requirements
 
-- Cursor IDE with Agent mode
+- Any AI coding assistant with Agent mode (Cursor, Claude Code, Windsurf, Cline, etc.)
 - No additional dependencies for paper-review
 - Internet connection for ref-check (API queries)
 

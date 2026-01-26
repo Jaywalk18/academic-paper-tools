@@ -1,14 +1,14 @@
 [English](README.md) | [中文](README_CN.md)
 
-# 学术论文工具 - Cursor Agent Skills
+# 学术论文工具 - Agent Skills
 
-为 Cursor AI 设计的 Agent 原生学术论文工具，充分利用 Agent 自身能力。
+Agent 原生的学术论文工具，适用于任何支持 Agent 模式的 AI 编程助手（Cursor、Claude Code、Windsurf、Cline 等）。
 
 ## 设计理念
 
 这些 Skills 采用 **Agent 原生** 设计：
 
-- **无需外部 LLM 调用** - Cursor Agent 直接分析内容
+- **无需外部 LLM 调用** - AI Agent 直接分析内容
 - **直接文件访问** - 原生读取 TeX 源码、图片和参考文献
 - **最小依赖** - 仅在必要时调用外部 API（如学术数据库）
 - **LaTeX 优先** - 针对 TeX 项目优化，读取源文件以获得更好的分析效果
@@ -51,36 +51,40 @@
 
 ## 安装
 
-### 方式一：复制到 Cursor Skills 目录
+### 方式一：复制到 Skills 目录
 
-**Windows:**
-```powershell
-Copy-Item -Recurse .\paper-review\ "$env:USERPROFILE\.cursor\skills\paper-review"
-Copy-Item -Recurse .\ref-check\ "$env:USERPROFILE\.cursor\skills\ref-check"
-```
-
-**macOS/Linux:**
+**Cursor:**
 ```bash
+# Windows
+Copy-Item -Recurse .\paper-review\ "$env:USERPROFILE\.cursor\skills\paper-review"
+# macOS/Linux
 cp -r ./paper-review ~/.cursor/skills/
-cp -r ./ref-check ~/.cursor/skills/
 ```
+
+**Claude Code:**
+```bash
+cp -r ./paper-review ~/.claude/skills/
+```
+
+**其他 AI 助手:**
+参考对应工具的文档添加自定义 skills/prompts。
 
 ### 方式二：直接在项目中使用
 
-将 skill 文件夹放入项目的 `.cursor/skills/` 目录。
+将 skill 文件夹放入项目目录。大多数 AI 助手会自动识别 SKILL.md 或类似文件。
 
 ## 为什么用 Agent 原生设计？
 
 传统方式通过脚本调用外部 LLM API：
 
 ```
-❌ 旧方式: 用户 → Cursor Agent → Python 脚本 → OpenAI API → 响应
+❌ 旧方式: 用户 → AI Agent → Python 脚本 → OpenAI API → 响应
 ```
 
-这完全是多此一举 - Cursor Agent 本身就是强大的 LLM！
+这完全是多此一举 - AI Agent 本身就是强大的 LLM！
 
 ```
-✅ 新方式: 用户 → Cursor Agent（直接分析文件）→ 响应
+✅ 新方式: 用户 → AI Agent（直接分析文件）→ 响应
 ```
 
 **优势：**
@@ -117,7 +121,7 @@ cursor-skills/
 
 ## 系统要求
 
-- Cursor IDE（Agent 模式）
+- 任何支持 Agent 模式的 AI 编程助手（Cursor、Claude Code、Windsurf、Cline 等）
 - paper-review 无额外依赖
 - ref-check 需要网络连接（API 查询）
 
