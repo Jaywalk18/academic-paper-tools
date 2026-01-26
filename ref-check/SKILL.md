@@ -23,18 +23,30 @@ Find `.bib` files in the project (common names: `main.bib`, `references.bib`, `r
 
 ### Step 2: Run the Verification Script
 
-**Preferred method** - Run the Python script for accurate batch verification:
+**Preferred method** - Run the Python script for accurate batch verification.
+
+> **⚠️ IMPORTANT: This is a long-running task!**
+> - Each reference queries 3 databases with rate limiting (0.3s intervals)
+> - 40 references ≈ 120 API calls ≈ **60-90 seconds**
+> - **MUST run in background** with output to file, then check results after completion
 
 ```bash
 # Install dependencies first (if needed)
 pip install requests rapidfuzz bibtexparser
 
-# Run verification
-python scripts/check_references.py --bib path/to/references.bib
+# ✅ CORRECT: Run in BACKGROUND with output file
+python scripts/check_references.py --bib path/to/references.bib --output report.json &
 
-# Save report to file
-python scripts/check_references.py --bib path/to/references.bib --output report.json
+# ❌ WRONG: Don't run foreground - will timeout/hang
+# python scripts/check_references.py --bib path/to/references.bib
 ```
+
+**Execution steps for Agent:**
+1. Run script in **background** with `--output` flag
+2. Inform user: "正在后台验证引用，预计需要 X 秒..."
+3. Wait ~60-90 seconds (or check if output file exists)
+4. Read the output JSON file
+5. Generate human-readable report
 
 The script:
 1. Parses BibTeX and normalizes entries (strips LaTeX, extracts first author surname)
@@ -146,12 +158,22 @@ pip install requests rapidfuzz bibtexparser
 **User**: Check the references in release/main.bib
 
 **Agent Actions**:
+
+1. **Start background job:**
 ```bash
-# Run the verification script
-python scripts/check_references.py --bib release/main.bib --output refcheck_report.json
+python scripts/check_references.py --bib release/main.bib --output refcheck_report.json &
 ```
 
-Then read `refcheck_report.json` and summarize:
+2. **Inform user:**
+> "正在后台验证 release/main.bib 中的引用，预计需要 60-90 秒。完成后我会生成报告。"
+
+3. **Wait and check output file** (after ~60-90s):
+```bash
+# Check if file exists and has content
+ls -la refcheck_report.json
+```
+
+4. **Read results and summarize:**
 - Total verified/uncertain/suspicious counts
 - List suspicious entries with red flags
 - Suggest corrections for problematic references
