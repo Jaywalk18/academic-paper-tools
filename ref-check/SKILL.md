@@ -1,122 +1,194 @@
 ---
 name: ref-check
-description: Verify BibTeX references for academic papers. Checks citation accuracy against Crossref, OpenAlex, and Semantic Scholar databases. Use when the user wants to check references, verify citations, validate a .bib file, or mentions bibliography verification.
+description: Verify BibTeX references for academic papers. Checks citation accuracy against Crossref and OpenAlex databases. Use when the user wants to check references, verify citations, validate a .bib file, or find potential citation errors.
 ---
 
 # RefCheck - BibTeX Reference Verification
 
-This skill verifies the accuracy of BibTeX references by cross-checking against multiple academic databases.
+This skill verifies academic references by querying real bibliographic databases and analyzing the results.
 
-## Quick Start
+## Activation Triggers
 
-When the user wants to verify references:
-
-1. **Locate the .bib file** or get the BibTeX content
-2. **Run the verification script**:
-
-```bash
-python scripts/check_references.py --bib "path/to/references.bib"
-```
-
-Or verify inline BibTeX:
-```bash
-python scripts/check_references.py --content "@article{key, title={...}, ...}"
-```
-
-## Environment Setup
-
-Optional environment variables:
-- `SEMANTIC_SCHOLAR_API_KEY` - For enhanced S2 search (optional, free tier available)
-
-Note: Crossref and OpenAlex are completely free and require no API keys.
+Use this skill when the user:
+- Asks to "check references" or "verify citations"
+- Wants to validate a `.bib` file
+- Asks about potential citation errors
+- Mentions bibliography verification or reference checking
 
 ## Verification Process
 
-The system performs these steps for each BibTeX entry:
+### Step 1: Locate and Read BibTeX File
 
-1. **Parse** - Extract entries from BibTeX
-2. **Normalize** - Clean LaTeX, extract first author, normalize DOI
-3. **Search** - Query multiple academic databases:
-   - Crossref (bibliographic search)
-   - OpenAlex (works search)
-   - Semantic Scholar (optional, if API key provided)
-4. **Score** - Find best matching candidate and compute similarity
-5. **Classify** - Determine verification status
+1. Find `.bib` files in the project (common names: `main.bib`, `references.bib`, `ref.bib`)
+2. Read the BibTeX content using `Read` tool
 
-## Output Status
+### Step 2: Parse BibTeX Entries
 
-Each reference gets one of three statuses:
+Extract key information from each entry:
+- **Citation key**: The identifier (e.g., `smith2023deep`)
+- **Title**: The paper/book title
+- **Authors**: Author names (focus on first author's last name)
+- **Year**: Publication year
+- **Venue**: Journal, conference, or publisher
 
-| Status | Criteria | Score |
-|--------|----------|-------|
-| **verified** | Title sim ≥ 0.90 + author match + year match (±1) | 90 |
-| **uncertain** | Some inconsistencies but not severe | 60 |
-| **suspicious** | Title sim < 0.55 OR multiple severe mismatches | 20 |
+### Step 3: Query Academic Databases
 
-## Output Format
+For each reference, query **Crossref** (free, no API key needed):
 
-The script outputs a JSON report:
+```bash
+# Using curl to query Crossref
+curl "https://api.crossref.org/works?query.bibliographic=TITLE&rows=3"
+```
 
+Or use `WebFetch` tool with URL:
+```
+https://api.crossref.org/works?query.bibliographic=ENCODED_TITLE&rows=3
+```
+
+**Alternative: OpenAlex** (also free):
+```
+https://api.openalex.org/works?search=ENCODED_TITLE&per-page=3
+```
+
+### Step 4: Compare and Score
+
+For each reference, compare BibTeX entry with database results:
+
+| Check | Verified | Uncertain | Suspicious |
+|-------|----------|-----------|------------|
+| Title similarity | ≥90% | 70-89% | <70% |
+| First author match | Found | Missing info | Not found |
+| Year match | ±1 year | Missing | ≥2 years off |
+
+### Step 5: Generate Report
+
+Produce a verification report:
+
+```markdown
+## Reference Verification Report
+
+### Summary
+- **Total references**: 45
+- ✅ **Verified**: 38 (84%)
+- ⚠️ **Uncertain**: 5 (11%)
+- ❌ **Suspicious**: 2 (5%)
+
+### Suspicious References (Need Attention)
+
+#### 1. `fabricated2023`
+- **BibTeX title**: "A Novel Approach to Everything"
+- **Issue**: No matching papers found in any database
+- **Action**: Verify this reference exists; may be fabricated
+
+#### 2. `smith2020deep`
+- **BibTeX title**: "Deep Learning Methods"
+- **Best match**: "Deep Learning Methods for Computer Vision" (sim: 0.72)
+- **Issue**: Title significantly different; year mismatch (2020 vs 2019)
+- **Action**: Verify correct paper; update title and year if needed
+
+### Uncertain References (Review Recommended)
+
+#### 1. `jones2022neural`
+- **Issue**: Author name not found in matched paper's author list
+- **Suggestion**: Check if author order or name spelling is correct
+
+### Verified References
+[List of verified references - can be collapsed]
+
+### Suggested Corrections
+
+\`\`\`bibtex
+% smith2020deep - suggested correction:
+@article{smith2020deep,
+  title = {Deep Learning Methods for Computer Vision},
+  author = {Smith, John and Doe, Jane},
+  year = {2019},  % Changed from 2020
+  journal = {IEEE TPAMI}
+}
+\`\`\`
+```
+
+## API Response Parsing
+
+### Crossref Response Structure
 ```json
 {
-  "summary": {
-    "total": 10,
-    "counts": {
-      "verified": 7,
-      "uncertain": 2,
-      "suspicious": 1
-    }
-  },
-  "items": [
+  "message": {
+    "items": [
+      {
+        "title": ["Paper Title"],
+        "author": [{"given": "John", "family": "Smith"}],
+        "issued": {"date-parts": [[2023]]},
+        "container-title": ["Journal Name"]
+      }
+    ]
+  }
+}
+```
+
+### OpenAlex Response Structure
+```json
+{
+  "results": [
     {
-      "key": "smith2023deep",
-      "status": "verified",
-      "score": 90,
-      "input": {
-        "title": "Deep Learning for NLP",
-        "year": 2023,
-        "venue": "ACL"
-      },
-      "best_match": {
-        "title": "Deep Learning for Natural Language Processing",
-        "year": 2023,
-        "authors": ["John Smith", "Jane Doe"],
-        "sim_title": 0.95
-      },
-      "diff_fields": [],
-      "red_flags": []
+      "title": "Paper Title",
+      "publication_year": 2023,
+      "authorships": [{"author": {"display_name": "John Smith"}}],
+      "host_venue": {"display_name": "Journal Name"}
     }
   ]
 }
 ```
 
-## Usage Examples
+## Scoring Algorithm
 
-**Check a .bib file:**
-> "Check the references in paper.bib"
-
-**Check specific entries:**
-> "Verify this citation: @article{key, title={...}}"
-
-**Save report:**
-```bash
-python scripts/check_references.py --bib refs.bib --output report.json
 ```
+title_sim = fuzzy_match(bib_title, ref_title)  # 0-1 scale
+author_match = first_author_in_ref_authors     # true/false/null
+year_match = abs(bib_year - ref_year) <= 1     # true/false/null
+
+if title_sim >= 0.90 and author_match and year_match:
+    status = "verified"
+elif title_sim < 0.55 or (multiple severe mismatches):
+    status = "suspicious"
+else:
+    status = "uncertain"
+```
+
+## Batch Processing Strategy
+
+For large `.bib` files (>20 entries):
+1. Process in batches of 5-10 to avoid rate limits
+2. Add 0.5s delay between API calls
+3. Report progress: "Checking references 1-10 of 45..."
 
 ## Common Issues Detected
 
-- **Title mismatch** - Citation title differs significantly from database
-- **Author mismatch** - First author not found in reference authors
-- **Year mismatch** - Publication year differs by more than 1 year
-- **No candidates found** - Reference not found in any database (may be fabricated)
+| Issue | Description | Severity |
+|-------|-------------|----------|
+| Title mismatch | BibTeX title differs from official title | High |
+| Year mismatch | Publication year incorrect | Medium |
+| Author mismatch | First author not found | Medium |
+| Venue mismatch | Journal/conference name differs | Low |
+| No results | Reference not found in any database | Critical |
+| Duplicate entry | Same paper cited with different keys | Low |
 
-## Dependencies
+## Important Notes
 
-Install required packages:
-```bash
-pip install requests rapidfuzz bibtexparser
-```
+1. **Rate Limiting**: Crossref allows ~50 requests/second for polite users; add delays for large batches
+2. **Title Encoding**: URL-encode special characters in titles
+3. **False Positives**: Some legitimate papers may not be in databases (preprints, very recent, etc.)
+4. **Manual Verification**: Always recommend manual check for suspicious entries
 
-## API Reference
+## Example Interaction
 
-For detailed information about the verification process and scoring algorithm, see [reference.md](reference.md).
+**User**: Check the references in release/main.bib
+
+**Agent Actions**:
+1. `Read release/main.bib` → Parse BibTeX entries
+2. For each entry (or sample if many):
+   - Extract title, author, year
+   - `WebFetch https://api.crossref.org/works?query.bibliographic=...`
+   - Compare results with BibTeX entry
+3. Compile verification report with issues found
+4. Suggest corrections for problematic entries

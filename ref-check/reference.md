@@ -1,131 +1,271 @@
-# RefCheck Technical Reference
+# RefCheck - API Reference
+
+This document provides technical details for the reference verification skill.
+
+## Academic Database APIs
+
+### Crossref API
+
+**Endpoint:** `https://api.crossref.org/works`
+
+**Query Parameters:**
+| Parameter | Description | Example |
+|-----------|-------------|---------|
+| `query.bibliographic` | Search by title/author | `Deep Learning for NLP` |
+| `query.author` | Filter by author | `Smith` |
+| `rows` | Number of results | `5` |
+| `filter` | Date filter | `from-pub-date:2023-01-01` |
+
+**Example Request:**
+```
+https://api.crossref.org/works?query.bibliographic=Attention+Is+All+You+Need&rows=3
+```
+
+**Response Structure:**
+```json
+{
+  "status": "ok",
+  "message": {
+    "items": [
+      {
+        "DOI": "10.xxxxx",
+        "title": ["Attention Is All You Need"],
+        "author": [
+          {"given": "Ashish", "family": "Vaswani"},
+          {"given": "Noam", "family": "Shazeer"}
+        ],
+        "issued": {"date-parts": [[2017]]},
+        "container-title": ["Advances in Neural Information Processing Systems"]
+      }
+    ]
+  }
+}
+```
+
+**Rate Limits:** ~50 requests/second for polite users (include email in User-Agent)
+
+---
+
+### OpenAlex API
+
+**Endpoint:** `https://api.openalex.org/works`
+
+**Query Parameters:**
+| Parameter | Description | Example |
+|-----------|-------------|---------|
+| `search` | Full-text search | `transformer attention mechanism` |
+| `filter` | Field filters | `publication_year:2023` |
+| `per-page` | Results per page | `5` |
+
+**Example Request:**
+```
+https://api.openalex.org/works?search=BERT+pre-training&per-page=3
+```
+
+**Response Structure:**
+```json
+{
+  "results": [
+    {
+      "id": "https://openalex.org/W2963403868",
+      "title": "BERT: Pre-training of Deep Bidirectional Transformers",
+      "publication_year": 2019,
+      "authorships": [
+        {
+          "author": {
+            "display_name": "Jacob Devlin"
+          }
+        }
+      ],
+      "host_venue": {
+        "display_name": "NAACL"
+      }
+    }
+  ]
+}
+```
+
+**Rate Limits:** 100,000 requests/day without API key
+
+---
 
 ## Verification Algorithm
 
-### 1. BibTeX Parsing
+### Title Similarity
 
-The system uses `bibtexparser` library with fallback to a custom regex-based parser.
-
-**Extracted fields:**
-- `title` - Paper title
-- `author` - Author list (BibTeX format: "Last1, First1 and Last2, First2")
-- `year` - Publication year
-- `doi` - Digital Object Identifier (if available)
-- `journal` / `booktitle` - Venue
-
-### 2. Normalization
-
-**Title normalization:**
-- Remove LaTeX commands (`\textbf{}`, `\emph{}`, etc.)
-- Remove braces
-- Lowercase
-- Collapse whitespace
-- Unicode NFKC normalization
-
-**Author normalization:**
-- Split by " and "
-- Extract first author's last name
-- Normalize text
-
-**DOI normalization:**
-- Remove URL prefix (`https://doi.org/`)
-- Lowercase
-- Remove trailing punctuation
-
-### 3. Database Queries
-
-#### Crossref
-- **Endpoint:** `https://api.crossref.org/works`
-- **Parameters:** `query.bibliographic`, `query.author`, `filter` (year)
-- **Rate limit:** Polite pool (no key required)
-
-#### OpenAlex
-- **Endpoint:** `https://api.openalex.org/works`
-- **Parameters:** `search`, `per-page`
-- **Rate limit:** 100,000/day (no key required)
-
-#### Semantic Scholar
-- **Endpoint:** `https://api.semanticscholar.org/graph/v1/paper/search`
-- **Parameters:** `query`, `limit`, `fields`
-- **Rate limit:** 100/5min without key, higher with API key
-
-### 4. Scoring Algorithm
-
-#### Title Similarity
-Uses `rapidfuzz.fuzz.token_sort_ratio`:
-- Tokenizes both strings
-- Sorts tokens alphabetically
-- Computes ratio (0-100, divided by 100)
-
-#### Author Hit
-Checks if normalized first author appears in any candidate author name (substring match within first 5 authors).
-
-#### Year Match
-Checks if years are within tolerance (default: ±1 year).
-
-### 5. Status Classification
+Use fuzzy string matching (token sort ratio):
 
 ```
-IF title_sim >= 0.90 AND author_hit AND year_match:
-    status = "verified"
-ELIF title_sim < 0.55:
-    status = "suspicious"
-ELIF severe_count >= 2:
-    status = "suspicious"
-ELSE:
-    status = "uncertain"
+similarity = token_sort_ratio(normalize(bib_title), normalize(ref_title))
 ```
 
-**Severe criteria:**
-- `title_severe`: title_sim < 0.70
-- `author_severe`: author_hit == False AND both have author info
-- `year_severe`: year difference >= 2
+**Normalization:**
+1. Convert to lowercase
+2. Remove LaTeX commands (`\textbf{}`, etc.)
+3. Remove special characters
+4. Collapse whitespace
+
+**Thresholds:**
+- ≥ 0.90: Verified
+- 0.70-0.89: Uncertain
+- < 0.70: Suspicious
+- < 0.55: Very suspicious (likely wrong paper)
+
+### Author Matching
+
+Extract first author's last name from BibTeX:
+```
+"Smith, John and Doe, Jane" → "smith"
+"John Smith and Jane Doe" → "smith"
+```
+
+Check if first author appears in reference's author list (case-insensitive).
+
+### Year Matching
+
+```
+if abs(bib_year - ref_year) <= 1:
+    match = True  # Allow 1 year tolerance for publication delays
+elif abs(bib_year - ref_year) >= 2:
+    match = False  # Likely error
+```
+
+### Final Status
+
+```python
+def classify(title_sim, author_match, year_match):
+    if title_sim >= 0.90 and author_match and year_match:
+        return "verified"
+    
+    # Very severe issues
+    if title_sim < 0.55:
+        return "suspicious"
+    
+    # Count severe issues
+    severe = 0
+    if title_sim < 0.70:
+        severe += 1
+    if author_match == False:  # Not None
+        severe += 1
+    if year_match == False and year_diff >= 2:
+        severe += 1
+    
+    if severe >= 2:
+        return "suspicious"
+    
+    return "uncertain"
+```
+
+---
+
+## Common BibTeX Issues
+
+### 1. Title Errors
+
+**Truncated titles:**
+```bibtex
+% Wrong
+title = {Deep Learning}
+% Correct
+title = {Deep Learning for Natural Language Processing}
+```
+
+**Extra words:**
+```bibtex
+% Wrong (includes subtitle)
+title = {BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding}
+% Correct (conference version)
+title = {BERT: Pre-training of Deep Bidirectional Transformers}
+```
+
+### 2. Author Errors
+
+**Name order:**
+```bibtex
+% Wrong (family name not first)
+author = {John Smith and Jane Doe}
+% Better (standard format)
+author = {Smith, John and Doe, Jane}
+```
+
+**Missing authors:**
+```bibtex
+% Wrong (only first author)
+author = {Vaswani, Ashish}
+% Correct
+author = {Vaswani, Ashish and Shazeer, Noam and Parmar, Niki and ...}
+```
+
+### 3. Year Errors
+
+Common causes:
+- arXiv year vs. publication year
+- Conference vs. journal version
+- Typos
+
+### 4. Venue Errors
+
+```bibtex
+% Inconsistent
+booktitle = {NeurIPS}
+booktitle = {Advances in Neural Information Processing Systems}
+booktitle = {NeurIPS 2023}
+```
+
+---
+
+## URL Encoding
+
+When constructing API URLs, encode special characters:
+
+| Character | Encoded |
+|-----------|---------|
+| Space | `%20` or `+` |
+| `&` | `%26` |
+| `=` | `%3D` |
+| `?` | `%3F` |
+| `:` | `%3A` |
+
+**Example:**
+```
+Title: "What is BERT?"
+Encoded: What%20is%20BERT%3F
+```
+
+---
 
 ## Error Handling
 
-### No Candidates Found
-If all sources return no matching candidates:
-- If sources were reachable → `suspicious` (reference may be fabricated)
-- If all sources failed → `uncertain` (network issue)
-
 ### API Errors
-- Rate limiting (429): Automatic retry with exponential backoff
-- Timeout: Returns partial results
-- Server errors: Skips source, continues with others
 
-## Configuration Options
+| Status | Meaning | Action |
+|--------|---------|--------|
+| 200 | Success | Process results |
+| 404 | Not found | Mark as "no results" |
+| 429 | Rate limited | Wait and retry |
+| 500+ | Server error | Try alternative API |
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `timeout_sec` | 12 | HTTP request timeout |
-| `max_candidates` | 5 | Max candidates per source |
-| `per_source_min_interval_sec` | 0.25 | Rate limit between requests |
+### No Results
 
-## Output Fields
+If no results from any API:
+1. Check if title is very unusual or contains special characters
+2. Paper may be preprint-only (not indexed)
+3. Paper may be very recent
+4. Paper may not exist (fabricated reference)
 
-### Per-Entry Result
+---
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `key` | string | BibTeX citation key |
-| `status` | string | verified/uncertain/suspicious |
-| `score` | int | Display score (90/60/20) |
-| `input` | object | Original BibTeX data |
-| `best_match` | object | Best matching candidate |
-| `diff_fields` | array | Fields with mismatches |
-| `diff_detail` | object | Detailed mismatch info |
-| `suggested` | object | Suggested corrections |
-| `red_flags` | array | Warning messages |
+## Batch Processing
 
-### Best Match Object
+For large `.bib` files:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `source` | string | crossref_search/openalex/semanticscholar |
-| `title` | string | Reference title |
-| `year` | int | Publication year |
-| `venue` | string | Journal/conference name |
-| `authors` | array | Author names |
-| `sim_title` | float | Title similarity score |
-| `author_hit` | bool/null | Author match result |
-| `year_match` | bool/null | Year match result |
+1. **Parse all entries first**
+2. **Process in batches of 5-10**
+3. **Add delays between batches** (0.5-1 second)
+4. **Report progress** to user
+5. **Handle failures gracefully** (continue with next entry)
+
+```
+Processing references...
+[=====>                    ] 12/45 (27%)
+```

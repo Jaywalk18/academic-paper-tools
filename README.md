@@ -1,164 +1,57 @@
 [English](README.md) | [中文](README_CN.md)
 
-# Academic Paper Tools
+# Academic Paper Tools - Cursor Agent Skills
 
-AI-powered tools for academic paper workflows. Works with Cursor, CLI, and other AI editors.
+Agent-native tools for academic paper workflows. Designed specifically for Cursor AI to leverage its built-in capabilities.
 
-This repository contains two tools:
+## Design Philosophy
 
-1. **paper-review** - AI-powered paper review simulation using multi-agent system
-2. **ref-check** - BibTeX reference verification against academic databases
+These skills are designed as **Agent-native** tools:
 
-## Features
+- **No external LLM calls** - The Cursor Agent itself analyzes content directly
+- **Direct file access** - Reads TeX source, figures, and bibliography files natively
+- **Minimal dependencies** - Only calls external APIs when necessary (e.g., bibliographic databases)
+- **LaTeX-first** - Optimized for TeX projects, reading source files for better analysis
 
-### Paper Review Skill
+## Available Skills
 
-- **Multi-Agent Pipeline**: Uses 4 AI agents to simulate the academic review process
-- **Visual Analysis**: Analyzes PDF pages to extract technical contributions
-- **Review Synthesis**: Evaluates reviewer comments and identifies credibility
-- **Rebuttal Analysis**: Assesses author responses to reviewer concerns
-- **Decision Prediction**: Predicts acceptance (Oral/Spotlight/Poster/Reject)
+### 1. Paper Review (`paper-review/`)
 
-### RefCheck Skill
+AI-powered academic paper review that analyzes LaTeX source files directly.
 
-- **Multi-Source Verification**: Checks references against Crossref, OpenAlex, and Semantic Scholar
-- **Accuracy Scoring**: Computes title similarity, author match, and year match
-- **Status Classification**: Classifies each reference as verified/uncertain/suspicious
-- **Detailed Reports**: Provides diff details and suggested corrections
+**Features:**
+- Reads `.tex` files to understand paper structure and content
+- Analyzes figures for visual quality
+- Checks bibliography completeness
+- Provides structured review with specific file/line references
+
+**Usage:**
+```
+"Review my paper in the release/ folder"
+"Give me feedback on the experiments section"
+"What are the weaknesses of this paper?"
+```
+
+### 2. Reference Check (`ref-check/`)
+
+Verifies BibTeX references against academic databases (Crossref, OpenAlex).
+
+**Features:**
+- Parses `.bib` files directly
+- Queries free academic APIs (no API key required)
+- Detects title mismatches, year errors, missing papers
+- Suggests corrections
+
+**Usage:**
+```
+"Check the references in main.bib"
+"Verify my citations"
+"Are there any suspicious references?"
+```
 
 ## Installation
 
-### 1. Clone Repository
-
-```bash
-git clone https://github.com/Jaywalk18/academic-paper-tools.git
-cd academic-paper-tools
-```
-
-### 2. Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 3. Configure API Keys
-
-**For Paper Review** (required):
-```bash
-# Windows PowerShell
-$env:PAPER_REVIEW_API_KEY = "your-openai-api-key"
-
-# macOS/Linux
-export PAPER_REVIEW_API_KEY="your-openai-api-key"
-```
-
-**For RefCheck** (optional, enhances search):
-```bash
-# Windows PowerShell
-$env:SEMANTIC_SCHOLAR_API_KEY = "your-s2-api-key"
-
-# macOS/Linux
-export SEMANTIC_SCHOLAR_API_KEY="your-s2-api-key"
-```
-
-## Usage
-
-### Command Line
-
-### Paper Review
-
-```bash
-# Basic review (PDF only)
-python paper-review/scripts/review_paper.py --pdf paper.pdf
-
-# With reviewer comments
-python paper-review/scripts/review_paper.py --pdf paper.pdf --reviews reviews.json
-
-# Save output
-python paper-review/scripts/review_paper.py --pdf paper.pdf -o result.json
-```
-
-### RefCheck
-
-```bash
-# Check a .bib file
-python ref-check/scripts/check_references.py --bib references.bib
-
-# Check inline BibTeX
-python ref-check/scripts/check_references.py --content "@article{key, title={...}}"
-
-# Save report
-python ref-check/scripts/check_references.py --bib refs.bib -o report.json
-```
-
-## Environment Variables
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `PAPER_REVIEW_API_KEY` | Yes (paper-review) | OpenAI-compatible API key |
-| `PAPER_REVIEW_API_BASE` | No | Custom API base URL (default: OpenAI) |
-| `PAPER_REVIEW_MODEL` | No | Model name (default: gpt-4o) |
-| `SEMANTIC_SCHOLAR_API_KEY` | No | Semantic Scholar API key for enhanced search |
-
-## Output Examples
-
-### Paper Review Output
-
-```json
-{
-  "title": "Deep Learning for NLP",
-  "prediction": "Poster",
-  "final_score": 7.5,
-  "decision": {
-    "final_decision": "Poster",
-    "decision_archetype": "Uncontested_Success",
-    "key_factor": "Strong empirical results",
-    "confidence": "High"
-  }
-}
-```
-
-### RefCheck Output
-
-```json
-{
-  "summary": {
-    "total": 10,
-    "counts": {
-      "verified": 7,
-      "uncertain": 2,
-      "suspicious": 1
-    }
-  },
-  "items": [
-    {
-      "key": "smith2023",
-      "status": "verified",
-      "score": 90,
-      "best_match": {
-        "title": "...",
-        "sim_title": 0.95
-      }
-    }
-  ]
-}
-```
-
-## System Requirements
-
-- Python 3.8+
-- Internet connection for API calls
-
-### Additional Requirements for Paper Review
-
-- Poppler (for PDF processing)
-  - **Windows**: Download from [poppler-for-windows](https://github.com/osber/poppler-for-windows/releases)
-  - **macOS**: `brew install poppler`
-  - **Linux**: `apt-get install poppler-utils`
-
-## AI Editor Integration (Optional)
-
-These tools can be used as Agent Skills in AI-powered editors like Cursor:
+### Option 1: Copy to Cursor Skills Directory
 
 **Windows:**
 ```powershell
@@ -172,25 +65,72 @@ cp -r ./paper-review ~/.cursor/skills/
 cp -r ./ref-check ~/.cursor/skills/
 ```
 
-Then you can use natural language commands like:
-- "Review this paper: paper.pdf"
-- "Check the references in paper.bib"
+### Option 2: Use Directly in Project
+
+Place the skill folders in your project's `.cursor/skills/` directory.
+
+## Why Agent-Native?
+
+Traditional approaches call external LLM APIs from scripts:
+
+```
+❌ Old: User → Cursor Agent → Python Script → OpenAI API → Response
+```
+
+This is redundant - Cursor Agent already IS a powerful LLM!
+
+```
+✅ New: User → Cursor Agent (directly analyzes files) → Response
+```
+
+**Benefits:**
+- **Faster** - No extra API roundtrips
+- **Cheaper** - No additional API costs
+- **Better context** - Agent sees full project structure
+- **More precise** - Can reference exact file locations
+
+## Why TeX Source Over PDF?
+
+For LaTeX projects, reading source files is superior to PDF:
+
+| Aspect | PDF | TeX Source |
+|--------|-----|------------|
+| Text quality | May lose formatting | Perfect |
+| Math formulas | Often garbled | Original LaTeX |
+| Structure | Must infer | Explicit sections |
+| Figures | Compressed | Original quality |
+| Editability | "Page 5, paragraph 2" | "line 42 in method.tex" |
+
+## Project Structure
+
+```
+cursor-skills/
+├── paper-review/
+│   ├── SKILL.md          # Main skill definition
+│   └── prompts.md        # Reference prompts (optional)
+├── ref-check/
+│   ├── SKILL.md          # Main skill definition
+│   └── reference.md      # API documentation (optional)
+├── README.md
+└── README_CN.md
+```
+
+## Requirements
+
+- Cursor IDE with Agent mode
+- No additional dependencies for paper-review
+- Internet connection for ref-check (API queries)
 
 ## License
 
 MIT License
 
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
 ## Acknowledgments
 
-**Based on:**
-- [PaperDecision](https://github.com/PaperDecision/PaperDecision) - Multi-agent paper review prediction system
-- [RefCheck.ai](https://github.com/HuaHenry/RefCheck_ai) - BibTeX reference verification tool
+**Inspired by:**
+- [PaperDecision](https://github.com/PaperDecision/PaperDecision) - Multi-agent paper review concepts
+- [RefCheck.ai](https://github.com/HuaHenry/RefCheck_ai) - Reference verification methodology
 
 **Data Sources:**
-- [Crossref](https://www.crossref.org/) - Scholarly metadata API
+- [Crossref](https://www.crossref.org/) - Free scholarly metadata API
 - [OpenAlex](https://openalex.org/) - Open catalog of scholarly works
-- [Semantic Scholar](https://www.semanticscholar.org/) - AI-powered research tool

@@ -1,165 +1,142 @@
-# Paper Review Agent Prompts
+# Paper Review - Reference Prompts
 
-This document contains the prompt templates used by each agent in the paper review pipeline.
+This document provides reference prompts and evaluation criteria for the paper review skill.
 
-## Agent 1: Visual Content Evaluator
+## Evaluation Dimensions
 
+### 1. Novelty Assessment
+
+When evaluating novelty, consider:
+
+| Level | Description | Indicators |
+|-------|-------------|------------|
+| **Groundbreaking** | Introduces fundamentally new concepts | New paradigm, significant impact potential |
+| **Significant** | Novel combination or substantial improvement | Clear advancement over prior work |
+| **Incremental** | Minor improvements or engineering contributions | Similar to existing work with tweaks |
+
+**Key Questions:**
+- What is genuinely new in this paper?
+- How does it differ from the most similar prior work?
+- Would the community find this contribution meaningful?
+
+### 2. Technical Soundness
+
+Check for:
+- Mathematical correctness of derivations
+- Validity of assumptions
+- Proper use of evaluation metrics
+- Statistical significance of results
+- Reproducibility (are details sufficient?)
+
+**Red Flags:**
+- Missing proofs for theoretical claims
+- Unfair baseline comparisons
+- Cherry-picked results
+- Missing error bars or confidence intervals
+
+### 3. Experimental Quality
+
+| Aspect | Good | Problematic |
+|--------|------|-------------|
+| Baselines | Recent, strong, diverse | Outdated, weak, limited |
+| Datasets | Standard benchmarks + real-world | Only toy datasets |
+| Metrics | Multiple, standard | Single, custom |
+| Ablations | Comprehensive | Missing or incomplete |
+| Analysis | Insightful failure cases | Only positive results |
+
+### 4. Writing Quality
+
+Assess:
+- **Clarity**: Can a PhD student in the field follow it?
+- **Organization**: Logical flow from intro to conclusion?
+- **Figures**: Self-explanatory with proper captions?
+- **Related Work**: Fair and comprehensive?
+
+## Review Templates
+
+### Strength Template
 ```
-你现在是一位拥有 18 年 ICLR/PC 经验的 Senior Area Chair，你看过 2000+ 篇投稿，知道"看起来牛逼"和"真的牛逼"完全是两回事。
-
-你正在审一篇投稿（以完整 PDF 页面图像形式呈现），你的任务是**穿透视觉表象，直击技术本质**。
-
-请严格执行以下 7 步思维链（CoT），每一步都必须在最终 reasoning 中有所体现：
-
-### Step 1: 强制穿透视觉偏见
-- 无论图画得多漂亮、LaTeX 多精美，都必须先问自己："如果这篇论文用纯文本提交，我还会觉得它 groundbreaking 吗？"
-- 高质量排版和精美图表只能加分，不能决定 novelty。
-
-### Step 2: 提取真实核心技术贡献（必须是可证伪的）
-从图像中提取论文声称的 **3 个最核心、可被证伪的技术点**（不能是 motivation、不能是实验结果）
-
-### Step 3: 理论深度扫描（重点看公式密度与复杂度）
-- 数一数主要结果的证明长度（>1 页 = 可能有料）
-- 是否有 non-trivial assumption relaxation？
-- 是否统一了多个已有方法？（unification 是 ICLR Oral 常见模式）
-
-### Step 4: 方法新颖性真实评估（看架构图/算法框图）
-- 这个方法是"现有方法的 trivial combination"还是"本质上不同"？
-- 是否提出了新的 inductive bias / learning paradigm？
-
-### Step 5: 实验说服力度（看表/图的细节）
-- 是否有 impossible-to-fake 的结果？
-- 是否有强 ablation？
-- 是否有"先验认为不可能"的结果？
-
-### Step 6: 视觉质量只做参考（不能主导判断）
-- 精美图表 → 最多让门槛降低 5%
-- 丑图但理论硬核 → 照样可以 Groundbreaking
-
-### Step 7: 最终裁决（只能三选一）
-- Groundbreaking: 提出新 paradigm / 解决 long-standing problem / 统一多个领域
-- Significant: 扎实的新方法，强实验/理论，值得发
-- Incremental: 换皮、ablation、minor fix
-```
-
-**Output Format:**
-```json
-{
-  "core_claims": ["claim1", "claim2", "claim3"],
-  "novelty_level": "Groundbreaking|Significant|Incremental",
-  "award_potential": "High|Medium|Low",
-  "visual_quality": "High|Medium|Low",
-  "reasoning": "详细推理过程（不少于80字）"
-}
-```
-
----
-
-## Agent 2: Review Synthesizer
-
-```
-你现在是 ICLR 2025 最资深的 Area Chair，见过无数翻车和逆袭案例。你对审稿人心理了如指掌。
-
-请严格按以下 8 个维度分析：
-
-1. 审稿人专业度分层（必须分三类）：
-   - Expert：引用了具体行号/公式/实验细节
-   - Competent：正常技术评论，有理有据
-   - Shallow：泛泛而谈、复述摘要
-
-2. "空洞高分"检测：
-   - 分数 ≥7 但正文 <120 字 → 标记为 Empty_Praise
-
-3. "技术细节低分"加分：
-   - 分数 ≤5 但提供了具体错误 → 标记为 High_Credibility_Low_Score
-
-4. 致命缺陷指控核查
-
-5. 共识 vs 分歧量化
-
-6. 当前最危险的雷点
-
-7. 审稿人态度预测
-
-8. 最终综合判断
+[S1] Clear problem motivation: The paper identifies a genuine gap in...
+[S2] Strong empirical results: Achieves X% improvement on benchmark Y...
+[S3] Good ablation study: Table N clearly shows the contribution of each component...
 ```
 
-**Output Format:**
-```json
-{
-  "reviewer_analysis": {
-    "Reviewer 1": {"credibility": "Expert|Competent|Shallow", "type": "...", "score": 8, "critic": "..."}
-  },
-  "fatal_flaw_allegations": [],
-  "most_dangerous_issue": "...",
-  "consensus_type": "...",
-  "risk_level": "High|Medium|Low",
-  "meta_review_one_liner": "..."
-}
+### Weakness Template
+```
+[W1] Limited novelty: The proposed method is a straightforward combination of A and B...
+[W2] Missing comparison: The paper does not compare with recent work Z (VENUE 2024)...
+[W3] Unclear explanation: Section 3.2 does not explain why the specific choice of...
 ```
 
----
-
-## Agent 3: Rebuttal Analyzer
-
+### Question Template
 ```
-你现在是 ICLR 2025 最老辣的 Senior Area Chair，专职在 rebuttal 阶段"翻案"或"补刀"。
-
-游戏规则：
-1. 审稿人说的话 ≠ 最终权重
-2. 作者认错 = 立即死亡
-3. "我会在 camera-ready 修" = 无效
-
-执行 7 步精准裁决：
-1. 识别原始立场
-2. 分析作者 rebuttal 强度
-3. 判断审稿人最终状态（6分类）
-4. 致命安全检查
-5. 整体 rebuttal 效果评估
-6. 给出 AC 视角的"真实权重变化"
-7. 一句话 AC 内心独白
+[Q1] In Eq. 5, how is the hyperparameter λ chosen? Is it sensitive to this choice?
+[Q2] Have the authors tried applying this method to domain X? Why or why not?
+[Q3] The assumption in Section 3.1 seems restrictive. Can the authors clarify...
 ```
 
-**Output Format:**
-```json
-{
-  "rebuttal_effectiveness": "Strong|Moderate|Weak|Disastrous",
-  "success_rate": 0.87,
-  "admitted_fatal_error": false,
-  "author_self_sabotage": false,
-  "reviewer_final_states": {},
-  "ac_inner_monologue": "..."
-}
-```
+## Venue-Specific Standards
 
----
+### Top-tier Venues (NeurIPS, ICML, ICLR, CVPR)
+- Expect significant novelty
+- Strong baselines including SOTA
+- Multiple datasets
+- Thorough ablations
+- Clear writing
 
-## Agent 4: Decision Coordinator
+### Mid-tier Venues (Workshops, Regional Conferences)
+- Incremental contributions acceptable
+- Fewer baselines okay
+- Preliminary results acceptable
+- Work-in-progress allowed
 
-```
-你现在是 ICLR 2025 的 Program Chair。你的核心任务是**透过分数看本质**。
+## Common Issues by Section
 
-核心哲学：
-1. High Score ≠ Accept：缺乏激情的论文应该被 Reject
-2. Low Score ≠ Reject：如果低分理由站不住，高分理由是"开创性"，则应该 Accept
-3. The Champion Rule：有没有人愿意为这篇论文而战？
+### Abstract
+- Too vague ("we propose a novel method")
+- Missing quantitative results
+- Overclaiming ("state-of-the-art")
 
-决策矩阵：
-- Category 1: The Clear Winners (Oral/Spotlight)
-- Category 2: The "Marmite" Papers (Polarized)
-- Category 3: The "Vanilla" Trap (Mediocre Consensus)
-- Category 4: The Flawed but Fixable (Borderline Rescue)
-- Category 5: The Hard Rejects
-```
+### Introduction
+- Motivation unclear
+- Contributions not specific
+- Missing key citations
 
-**Output Format:**
-```json
-{
-  "final_decision": "Oral|Spotlight|Poster|Reject",
-  "final_score": 7.5,
-  "decision_archetype": "...",
-  "score_interpretation": "...",
-  "key_factor": "...",
-  "confidence": "High|Medium|Low"
-}
-```
+### Method
+- Notation inconsistent
+- Key details in appendix
+- Assumptions not stated
+
+### Experiments
+- Baselines outdated
+- Missing ablations
+- No failure analysis
+- Results not reproducible
+
+### Related Work
+- Missing recent papers
+- Unfair characterization
+- Poor positioning
+
+## Scoring Guidelines
+
+Use this mental model for overall assessment:
+
+| Score | Meaning | Typical Characteristics |
+|-------|---------|------------------------|
+| **Strong Accept** | Top 5% | Groundbreaking, flawless execution |
+| **Accept** | Top 20% | Significant contribution, minor issues |
+| **Weak Accept** | Top 35% | Solid work, some concerns |
+| **Borderline** | Top 50% | Decent but not compelling |
+| **Weak Reject** | Bottom 50% | Notable issues, limited contribution |
+| **Reject** | Bottom 30% | Major flaws or insufficient novelty |
+| **Strong Reject** | Bottom 10% | Fundamental problems |
+
+## Ethics Considerations
+
+Flag if you notice:
+- Potential dual-use concerns
+- Missing ethics statement for human data
+- Biased datasets or evaluation
+- Environmental impact not discussed (large models)
+- Reproducibility barriers (proprietary data/compute)
