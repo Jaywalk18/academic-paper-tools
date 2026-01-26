@@ -1,3 +1,5 @@
+[English](README.md) | [中文](README_CN.md)
+
 # Academic Paper Tools
 
 AI-powered tools for academic paper workflows. Works with Cursor, CLI, and other AI editors.
