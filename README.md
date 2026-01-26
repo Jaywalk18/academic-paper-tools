@@ -1,11 +1,19 @@
 [English](README.md) | [中文](README_CN.md)
 
-# Academic Paper Tools - Agent Skills
+<p align="center">
+  <img src="docs/logo.png" alt="Academic Paper Tools Logo" height="80">
+</p>
+
+# Academic Paper Tools
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 
 Agent-native tools for academic paper workflows. Works with any AI coding assistant that supports Agent mode (Cursor, Claude Code, Windsurf, Cline, etc.).
+
+<p align="center">
+  <img src="docs/pipeline.png" alt="Pipeline" height="300">
+</p>
 
 ## Design Philosophy
 
@@ -127,7 +135,7 @@ For LaTeX projects, reading source files is superior to PDF:
 ## Project Structure
 
 ```
-cursor-skills/
+academic-paper-tools/
 ├── paper-review/
 │   ├── SKILL.md          # Main skill definition
 │   └── prompts.md        # Evaluation criteria & templates

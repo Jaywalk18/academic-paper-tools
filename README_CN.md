@@ -1,11 +1,19 @@
 [English](README.md) | [中文](README_CN.md)
 
-# 学术论文工具 - Agent Skills
+<p align="center">
+  <img src="docs/logo.png" alt="学术论文工具 Logo" height="80">
+</p>
+
+# 学术论文工具
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 
 Agent 原生的学术论文工具，适用于任何支持 Agent 模式的 AI 编程助手（Cursor、Claude Code、Windsurf、Cline 等）。
+
+<p align="center">
+  <img src="docs/pipeline.png" alt="工作流程" height="300">
+</p>
 
 ## 设计理念
 
@@ -127,7 +135,7 @@ cp -r ./paper-review ~/.claude/skills/
 ## 项目结构
 
 ```
-cursor-skills/
+academic-paper-tools/
 ├── paper-review/
 │   ├── SKILL.md          # 主 Skill 定义
 │   └── prompts.md        # 评估标准和模板
