@@ -185,8 +185,8 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## Acknowledgments
 
 **Based on:**
-- [PaperDecision](https://github.com/Jaywalk18/PaperDecision) - Multi-agent paper review prediction system
-- [RefCheck.ai](https://github.com/Jaywalk18/RefCheck_ai) - BibTeX reference verification tool
+- [PaperDecision](https://github.com/PaperDecision/PaperDecision) - Multi-agent paper review prediction system
+- [RefCheck.ai](https://github.com/HuaHenry/RefCheck_ai) - BibTeX reference verification tool
 
 **Data Sources:**
 - [Crossref](https://www.crossref.org/) - Scholarly metadata API
