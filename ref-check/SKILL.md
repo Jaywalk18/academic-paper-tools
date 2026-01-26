@@ -1,11 +1,11 @@
 ---
 name: ref-check
-description: Verify BibTeX references for academic papers. Checks citation accuracy against Crossref and OpenAlex databases. Use when the user wants to check references, verify citations, validate a .bib file, or find potential citation errors.
+description: Verify BibTeX references for academic papers. Checks citation accuracy against Crossref and OpenAlex databases using the RefCheck_ai algorithm. Use when the user wants to check references, verify citations, validate a .bib file, or find potential citation errors.
 ---
 
 # RefCheck - BibTeX Reference Verification
 
-This skill verifies academic references by querying real bibliographic databases and analyzing the results.
+This skill verifies academic references using the RefCheck_ai algorithm - querying multiple databases and using fuzzy matching to find the best candidates.
 
 ## Activation Triggers
 
@@ -17,52 +17,42 @@ Use this skill when the user:
 
 ## Verification Process
 
-### Step 1: Locate and Read BibTeX File
+### Step 1: Locate the BibTeX File
 
-1. Find `.bib` files in the project (common names: `main.bib`, `references.bib`, `ref.bib`)
-2. Read the BibTeX content using `Read` tool
+Find `.bib` files in the project (common names: `main.bib`, `references.bib`, `ref.bib`)
 
-### Step 2: Parse BibTeX Entries
+### Step 2: Run the Verification Script
 
-Extract key information from each entry:
-- **Citation key**: The identifier (e.g., `smith2023deep`)
-- **Title**: The paper/book title
-- **Authors**: Author names (focus on first author's last name)
-- **Year**: Publication year
-- **Venue**: Journal, conference, or publisher
-
-### Step 3: Query Academic Databases
-
-For each reference, query **Crossref** (free, no API key needed):
+**Preferred method** - Run the Python script for accurate batch verification:
 
 ```bash
-# Using curl to query Crossref
-curl "https://api.crossref.org/works?query.bibliographic=TITLE&rows=3"
+# Install dependencies first (if needed)
+pip install requests rapidfuzz bibtexparser
+
+# Run verification
+python scripts/check_references.py --bib path/to/references.bib
+
+# Save report to file
+python scripts/check_references.py --bib path/to/references.bib --output report.json
 ```
 
-Or use `WebFetch` tool with URL:
-```
-https://api.crossref.org/works?query.bibliographic=ENCODED_TITLE&rows=3
-```
+The script:
+1. Parses BibTeX and normalizes entries (strips LaTeX, extracts first author surname)
+2. Queries **3 databases** for each reference: Crossref, OpenAlex, Semantic Scholar
+3. Uses **fuzzy matching** (rapidfuzz token_sort_ratio) to find best candidate from all results
+4. Classifies as `verified`, `uncertain`, or `suspicious` based on RefCheck_ai algorithm
 
-**Alternative: OpenAlex** (also free):
-```
-https://api.openalex.org/works?search=ENCODED_TITLE&per-page=3
-```
+### Step 3: Interpret Results
 
-### Step 4: Compare and Score
+| Status | Criteria |
+|--------|----------|
+| **verified** | Title sim ≥90% + author match + year match (±1) |
+| **uncertain** | Some inconsistencies but not severe |
+| **suspicious** | Title sim <55% OR multiple severe mismatches |
 
-For each reference, compare BibTeX entry with database results:
+### Step 4: Generate Report
 
-| Check | Verified | Uncertain | Suspicious |
-|-------|----------|-----------|------------|
-| Title similarity | ≥90% | 70-89% | <70% |
-| First author match | Found | Missing info | Not found |
-| Year match | ±1 year | Missing | ≥2 years off |
-
-### Step 5: Generate Report
-
-Produce a verification report:
+Script output format:
 
 ```markdown
 ## Reference Verification Report
@@ -108,87 +98,70 @@ Produce a verification report:
 \`\`\`
 ```
 
-## API Response Parsing
+## Algorithm Details (RefCheck_ai)
 
-### Crossref Response Structure
-```json
-{
-  "message": {
-    "items": [
-      {
-        "title": ["Paper Title"],
-        "author": [{"given": "John", "family": "Smith"}],
-        "issued": {"date-parts": [[2023]]},
-        "container-title": ["Journal Name"]
-      }
-    ]
-  }
-}
-```
+The script uses the RefCheck_ai algorithm:
 
-### OpenAlex Response Structure
-```json
-{
-  "results": [
-    {
-      "title": "Paper Title",
-      "publication_year": 2023,
-      "authorships": [{"author": {"display_name": "John Smith"}}],
-      "host_venue": {"display_name": "Journal Name"}
-    }
-  ]
-}
-```
+1. **Multi-source search**: Query Crossref + OpenAlex + Semantic Scholar (if API key set)
+2. **Candidate extraction**: Get top 5 candidates from each source (15 total)
+3. **Fuzzy matching**: Use `rapidfuzz.fuzz.token_sort_ratio` for title similarity
+4. **Best selection**: Score = title_sim × 0.90 + author × 0.05 + year × 0.05
+5. **Classification**: Based on best match quality
 
-## Scoring Algorithm
-
-```
-title_sim = fuzzy_match(bib_title, ref_title)  # 0-1 scale
-author_match = first_author_in_ref_authors     # true/false/null
-year_match = abs(bib_year - ref_year) <= 1     # true/false/null
-
-if title_sim >= 0.90 and author_match and year_match:
+```python
+# Scoring formula
+if title_sim >= 0.90 and author_hit and year_match:
     status = "verified"
-elif title_sim < 0.55 or (multiple severe mismatches):
-    status = "suspicious"
+elif title_sim < 0.55:
+    status = "suspicious"  # Very low title match
+elif severe_count >= 2:
+    status = "suspicious"  # Multiple issues
 else:
     status = "uncertain"
 ```
-
-## Batch Processing Strategy
-
-For large `.bib` files (>20 entries):
-1. Process in batches of 5-10 to avoid rate limits
-2. Add 0.5s delay between API calls
-3. Report progress: "Checking references 1-10 of 45..."
 
 ## Common Issues Detected
 
 | Issue | Description | Severity |
 |-------|-------------|----------|
-| Title mismatch | BibTeX title differs from official title | High |
-| Year mismatch | Publication year incorrect | Medium |
-| Author mismatch | First author not found | Medium |
-| Venue mismatch | Journal/conference name differs | Low |
-| No results | Reference not found in any database | Critical |
-| Duplicate entry | Same paper cited with different keys | Low |
+| Title mismatch | BibTeX title differs from official | High |
+| Year mismatch | Publication year off by ≥2 years | Medium |
+| Author mismatch | First author not in matched paper | Medium |
+| No candidates | Paper not found in any database | Critical |
 
-## Important Notes
+## Environment Variables
 
-1. **Rate Limiting**: Crossref allows ~50 requests/second for polite users; add delays for large batches
-2. **Title Encoding**: URL-encode special characters in titles
-3. **False Positives**: Some legitimate papers may not be in databases (preprints, very recent, etc.)
-4. **Manual Verification**: Always recommend manual check for suspicious entries
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `SEMANTIC_SCHOLAR_API_KEY` | No | Enables S2 search for better coverage |
+
+## Dependencies
+
+```bash
+pip install requests rapidfuzz bibtexparser
+```
 
 ## Example Interaction
 
 **User**: Check the references in release/main.bib
 
 **Agent Actions**:
-1. `Read release/main.bib` → Parse BibTeX entries
-2. For each entry (or sample if many):
-   - Extract title, author, year
-   - `WebFetch https://api.crossref.org/works?query.bibliographic=...`
-   - Compare results with BibTeX entry
-3. Compile verification report with issues found
-4. Suggest corrections for problematic entries
+```bash
+# Run the verification script
+python scripts/check_references.py --bib release/main.bib --output refcheck_report.json
+```
+
+Then read `refcheck_report.json` and summarize:
+- Total verified/uncertain/suspicious counts
+- List suspicious entries with red flags
+- Suggest corrections for problematic references
+
+## Manual Spot-Check (Optional)
+
+For quick spot-checks of individual references, Agent can manually query:
+
+```
+WebFetch: https://api.crossref.org/works?query.bibliographic=TITLE&rows=5
+```
+
+Then compare the returned candidates with the BibTeX entry. But for batch verification, always prefer the Python script.
